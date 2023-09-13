@@ -1,12 +1,10 @@
 import random
 import math
 import matplotlib.pyplot as plt
-
 hydrophobic_aa = "FAMILYVWC"
 
-
-
 class Amino_acid :
+
     def __init__(self,numero,type,x=0.0,y=0.0):
         if (type in hydrophobic_aa):
             self.type = "H"
@@ -41,18 +39,26 @@ class Protein :
        self.current_energy = 0
        self.initial_structure()
 
-
-
     def initial_structure(self):
-        """ Initialise la strucure de la protéine en 2D afin qu'elle soit différente d'une strucure linéaire"""
+        """ Initialise la structure initiale de la protéine en respectant les mouvements implémentés."""
 
         l = len(self.sequence_aa)
 
-        for i,aa in enumerate(self.sequence_aa):
-            angle = 2 * i * 3.14159 / l
-            x = 10 * math.cos(angle)
-            y = 10 * math.sin(angle)
-            aa.set_coord(x, y)
+        # Place le premier acide aminé (n°1) à la position (0, 0)
+        self.sequence_aa[0].set_coord(0, 0)
+
+        # Place les acides aminés hydrophobes (H) de manière à ce que les mouvements possibles soient respectés
+        for i in range(1, l):
+            prev_x, prev_y = self.sequence_aa[i - 1].get_coord()
+            if i % 2 == 1:
+                # Pour les acides aminés impairs, ils seront placé a coté du précédent
+                self.sequence_aa[i].set_coord(prev_x + 1, prev_y)
+            else:
+                # Pour les acides aminés pairs, ils sont placés au dessus du précédent
+                if i % 4 == 0:
+                    self.sequence_aa[i].set_coord(prev_x, prev_y + 1)
+                else:
+                    self.sequence_aa[i].set_coord(prev_x, prev_y - 1)
 
     def lecture_seq(self,filename):
         """Fonction qui permet de lire un fichier fasta et de traduire les acides aminées
@@ -144,6 +150,7 @@ class Protein :
 
         common_neighbors = neighbor_position_i_moins_1.intersection(neighbor_position_i_plus_1)
 
+
         if not common_neighbors:
             return "Attention il n'y a pas assez de résidus dans la séquence"
 
@@ -156,9 +163,8 @@ class Protein :
         #Calcul de l'energie post-movement
         self.current_energy = self.energetic_measure()
 
+        return "Mouvement possible"
 
-    def crankshaft_move(self,x,y):
-        pass
 
     def end_move(self):
         """Fonction qui permet d'effectuer une end move si cela est permis'"""
@@ -204,6 +210,8 @@ class Protein :
         #Calcul de l'energie post-movement
         self.current_energy = self.energetic_measure()
 
+        return "Mouvement possible"
+
 
     def crankshaft_move(self):
         """Fonction qui permet d'effectuer un crankshaft move si cela est permis'"""
@@ -219,8 +227,6 @@ class Protein :
         position_i = (self.sequence_aa[i].x, self.sequence_aa[i].y)
         position_i_prime = (self.sequence_aa[i+2].x, self.sequence_aa[i + 2].y)
 
-        position_i_minus_1 = (self.sequence_aa[i -1].x, self.sequence_aa[i - 1].y)
-        position_i_plus_1 = (self.sequence_aa[i + 1].x, self.sequence_aa[i + 1].y)
 
         if position_i_prime not in [(position_i[0] + 1, position_i[1]),
                                     (position_i[0] - 1, position_i[1]),
@@ -232,23 +238,66 @@ class Protein :
         # Rotation de 180 degrés de la structure en U
         self.sequence_aa[i].set_coord(self.sequence_aa[i + 2].x, self.sequence_aa[i + 2].y)
         self.sequence_aa[i + 1].coord(self.sequence_aa[i + 1].x, self.sequence_aa[i + 1].y)
-        self.seuquence_aa[i + 2].set_coord(position_i[0, position_i[1]])
+        self.sequence_aa[i + 2].set_coord(position_i[0], position_i[1])
+
 
         # Calcul de l'energie post-movement
         self.current_energy = self.energetic_measure()
 
-    def minimize_energy(self, max_iterations=1000):
-        """ Cette fonction va mini"""
+        return "Mouvement possible"
+
+    def minimize_energy(self, max_iterations=20000):
+        """Minimise l'énergie globale de la protéine en effectuant des mouvements aléatoires par acide aminé."""
+        best_energy = self.energetic_measure()  # Énergie initiale
+        best_sequence = list(self.sequence_aa)  # Configuration initiale
+
+        for i in range(max_iterations):
+            # Sauvegarde de l'état actuel de la séquence
+            current_sequence = list(self.sequence_aa)
+            current_energy = self.current_energy
+
+            # Choix aléatoire d'un acide aminé
+            aa = random.choice(self.sequence_aa)
+
+            # Choix aléatoire d'un mouvement parmi ceux disponibles pour cet acide aminé
+            available_moves = [self.corner_move, self.crankshaft_move, self.end_move]
+            move_choice = random.choice(available_moves)
+
+            # Appliquer le mouvement choisi à l'acide aminé
+            result = move_choice()
+
+            if result == "Mouvement possible":
+                # Calcul de la nouvelle énergie
+                new_energy = self.energetic_measure()
+
+                # Mettre à jour la séquence si l'énergie est meilleure ou avec une certaine probabilité si l'énergie est pire
+                if new_energy < best_energy or random.random() < math.exp(-(new_energy - best_energy)):
+                    best_energy = new_energy
+                    best_sequence = list(self.sequence_aa)
+                else:
+                    # Passage à la conformation précédente si le mouvement est impossible
+                    self.sequence_aa = list(current_sequence)
+                    self.current_energy = current_energy
+
+        # Mettre à jour la séquence avec la meilleure configuration trouvée
+        self.sequence_aa = list(best_sequence)
+        self.current_energy = best_energy
 
     def visualize_sequence_2d(self):
         plt.figure()
         x = [aa.get_coord()[0] for aa in self.sequence_aa]
         y = [aa.get_coord()[1] for aa in self.sequence_aa]
 
-        # Affichage des acides aminés hydrophobes en rouge ('ro') et des acides aminés polaires en bleu ('bo')
+
         plt.plot(x, y, 'o', markersize=10, markerfacecolor='lightgray', markeredgecolor='black')
 
-        plt.title('Représentation 2D de la séquence d\'acides aminés')
+        # Ajout de lignes entre les acides aminés
+        for i in range(len(self.sequence_aa) - 1):
+            x_coords = [x[i], x[i + 1]]
+            y_coords = [y[i], y[i + 1]]
+            plt.plot(x_coords, y_coords, '-', color='black')
+
+        plt.title("Représentation 2D de la conformation optimisée de la protéine P02776")
         plt.xlabel('Position X')
         plt.ylabel('Position Y')
         plt.grid(True)
@@ -260,8 +309,11 @@ if __name__ == "__main__":
     protein = Protein("P02776.fasta")
     print(protein.full_seq())
     print(protein.energetic_measure())
+    protein.initial_structure()
     protein.visualize_sequence_2d()
-
+    protein.minimize_energy()
+    protein.visualize_sequence_2d()
+    print(f" l'energie minimale est {protein.current_energy}")
 
 
 
