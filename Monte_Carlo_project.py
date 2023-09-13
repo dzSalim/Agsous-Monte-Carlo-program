@@ -246,7 +246,7 @@ class Protein :
 
         return "Mouvement possible"
 
-    def minimize_energy(self, max_iterations=20000):
+    def minimize_energy(self, max_iterations=100):
         """Minimise l'énergie globale de la protéine en effectuant des mouvements aléatoires par acide aminé."""
         best_energy = self.energetic_measure()  # Énergie initiale
         best_sequence = list(self.sequence_aa)  # Configuration initiale
@@ -256,28 +256,27 @@ class Protein :
             current_sequence = list(self.sequence_aa)
             current_energy = self.current_energy
 
-            # Choix aléatoire d'un acide aminé
-            aa = random.choice(self.sequence_aa)
+            # Parcourir chaque acide aminé et appliquer un mouvement aléatoire
+            for aa in self.sequence_aa:
+                # Choix aléatoire d'un mouvement parmi ceux disponibles pour cet acide aminé
+                available_moves = [self.corner_move, self.crankshaft_move, self.end_move]
+                move_choice = random.choice(available_moves)
 
-            # Choix aléatoire d'un mouvement parmi ceux disponibles pour cet acide aminé
-            available_moves = [self.corner_move, self.crankshaft_move, self.end_move]
-            move_choice = random.choice(available_moves)
+                # Appliquer le mouvement choisi à l'acide aminé
+                result = move_choice()
 
-            # Appliquer le mouvement choisi à l'acide aminé
-            result = move_choice()
-
-            if result == "Mouvement possible":
-                # Calcul de la nouvelle énergie
-                new_energy = self.energetic_measure()
-
-                # Mettre à jour la séquence si l'énergie est meilleure ou avec une certaine probabilité si l'énergie est pire
-                if new_energy < best_energy or random.random() < math.exp(-(new_energy - best_energy)):
-                    best_energy = new_energy
-                    best_sequence = list(self.sequence_aa)
-                else:
-                    # Passage à la conformation précédente si le mouvement est impossible
+                if result != "Mouvement possible":
+                    # Si le mouvement est impossible, restaurer l'état précédent
                     self.sequence_aa = list(current_sequence)
                     self.current_energy = current_energy
+
+            # Calcul de la nouvelle énergie après chaque itération
+            new_energy = self.energetic_measure()
+
+            # Mettre à jour la séquence si l'énergie est meilleure ou avec une certaine probabilité si l'énergie est pire
+            if new_energy < best_energy or random.random() < math.exp(-(new_energy - best_energy)):
+                best_energy = new_energy
+                best_sequence = list(self.sequence_aa)
 
         # Mettre à jour la séquence avec la meilleure configuration trouvée
         self.sequence_aa = list(best_sequence)
