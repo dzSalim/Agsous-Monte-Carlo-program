@@ -1,0 +1,8 @@
+name : Monte-Carlo Project
+channels :
+    - default
+dependencies :
+    - python==3.9.13
+    - matplotlib.pyplot
+    - argparse
+
