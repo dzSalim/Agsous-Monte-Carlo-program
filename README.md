@@ -8,7 +8,7 @@ Ce projet est un programme Python pour la modélisation de repliement protéique
 
 ## Prérequis
 
-- Python==3.10
+- Python
 - Conda==23.7.4
 
 ## Installation
