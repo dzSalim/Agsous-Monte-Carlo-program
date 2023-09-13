@@ -3,6 +3,6 @@ channels :
     - default
 dependencies :
     - python==3.9.13
-    - matplotlib.pyplot
+    - matplotlib
     - argparse
 
